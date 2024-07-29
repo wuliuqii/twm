@@ -1,26 +1,20 @@
-use std::{ffi::OsString, sync::Arc};
+use std::ffi::OsString;
+use std::sync::Arc;
 
-use smithay::{
-    desktop::{PopupManager, Space, Window, WindowSurfaceType},
-    input::{Seat, SeatState},
-    reexports::{
-        calloop::{generic::Generic, EventLoop, Interest, LoopSignal, Mode, PostAction},
-        wayland_server::{
-            backend::{ClientData, ClientId, DisconnectReason},
-            protocol::wl_surface::WlSurface,
-            Display, DisplayHandle,
-        },
-    },
-    utils::{Logical, Point},
-    wayland::{
-        compositor::{CompositorClientState, CompositorState},
-        output::OutputManagerState,
-        selection::data_device::DataDeviceState,
-        shell::xdg::XdgShellState,
-        shm::ShmState,
-        socket::ListeningSocketSource,
-    },
-};
+use smithay::desktop::{PopupManager, Space, Window, WindowSurfaceType};
+use smithay::input::{Seat, SeatState};
+use smithay::reexports::calloop::generic::Generic;
+use smithay::reexports::calloop::{EventLoop, Interest, LoopSignal, Mode, PostAction};
+use smithay::reexports::wayland_server::backend::{ClientData, ClientId, DisconnectReason};
+use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
+use smithay::reexports::wayland_server::{Display, DisplayHandle};
+use smithay::utils::{Logical, Point};
+use smithay::wayland::compositor::{CompositorClientState, CompositorState};
+use smithay::wayland::output::OutputManagerState;
+use smithay::wayland::selection::data_device::DataDeviceState;
+use smithay::wayland::shell::xdg::XdgShellState;
+use smithay::wayland::shm::ShmState;
+use smithay::wayland::socket::ListeningSocketSource;
 
 use crate::CalloopData;
 
@@ -62,8 +56,9 @@ impl Smallvil {
         // A seat typically has a pointer and maintains a keyboard focus and a pointer focus.
         let mut seat: Seat<Self> = seat_state.new_wl_seat(&dh, "winit");
 
-        // Notify clients that we have a keyboard, for the sake of the example we assume that keyboard is always present.
-        // You may want to track keyboard hot-plug in real compositor.
+        // Notify clients that we have a keyboard, for the sake of the example we assume that
+        // keyboard is always present. You may want to track keyboard hot-plug in real
+        // compositor.
         seat.add_keyboard(Default::default(), 200, 25).unwrap();
 
         // Notify clients that we have a pointer (mouse)
@@ -104,7 +99,8 @@ impl Smallvil {
         display: Display<Smallvil>,
         event_loop: &mut EventLoop<CalloopData>,
     ) -> OsString {
-        // Creates a new listening socket, automatically choosing the next available `wayland` socket name.
+        // Creates a new listening socket, automatically choosing the next available `wayland`
+        // socket name.
         let listening_socket = ListeningSocketSource::new_auto().unwrap();
 
         // Get the name of the listening socket.
@@ -126,14 +122,18 @@ impl Smallvil {
             })
             .expect("Failed to init the wayland event source.");
 
-        // You also need to add the display itself to the event loop, so that client events will be processed by wayland-server.
+        // You also need to add the display itself to the event loop, so that client events will be
+        // processed by wayland-server.
         handle
             .insert_source(
                 Generic::new(display, Interest::READ, Mode::Level),
                 |_, display, state| {
                     // Safety: we don't drop the display
                     unsafe {
-                        display.get_mut().dispatch_clients(&mut state.state).unwrap();
+                        display
+                            .get_mut()
+                            .dispatch_clients(&mut state.state)
+                            .unwrap();
                     }
                     Ok(PostAction::Continue)
                 },
@@ -143,12 +143,17 @@ impl Smallvil {
         socket_name
     }
 
-    pub fn surface_under(&self, pos: Point<f64, Logical>) -> Option<(WlSurface, Point<f64, Logical>)> {
-        self.space.element_under(pos).and_then(|(window, location)| {
-            window
-                .surface_under(pos - location.to_f64(), WindowSurfaceType::ALL)
-                .map(|(s, p)| (s, (p + location).to_f64()))
-        })
+    pub fn surface_under(
+        &self,
+        pos: Point<f64, Logical>,
+    ) -> Option<(WlSurface, Point<f64, Logical>)> {
+        self.space
+            .element_under(pos)
+            .and_then(|(window, location)| {
+                window
+                    .surface_under(pos - location.to_f64(), WindowSurfaceType::ALL)
+                    .map(|(s, p)| (s, (p + location).to_f64()))
+            })
     }
 }
 
