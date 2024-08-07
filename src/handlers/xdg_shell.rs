@@ -16,9 +16,9 @@ use smithay::wayland::shell::xdg::{
 };
 
 use crate::grabs::{MoveSurfaceGrab, ResizeSurfaceGrab};
-use crate::Smallvil;
+use crate::Twm;
 
-impl XdgShellHandler for Smallvil {
+impl XdgShellHandler for Twm {
     fn xdg_shell_state(&mut self) -> &mut XdgShellState {
         &mut self.xdg_shell_state
     }
@@ -120,13 +120,13 @@ impl XdgShellHandler for Smallvil {
 }
 
 // Xdg Shell
-delegate_xdg_shell!(Smallvil);
+delegate_xdg_shell!(Twm);
 
 fn check_grab(
-    seat: &Seat<Smallvil>,
+    seat: &Seat<Twm>,
     surface: &WlSurface,
     serial: Serial,
-) -> Option<PointerGrabStartData<Smallvil>> {
+) -> Option<PointerGrabStartData<Twm>> {
     let pointer = seat.get_pointer()?;
 
     // Check that this surface has a click grab.
@@ -193,7 +193,7 @@ pub fn handle_commit(popups: &mut PopupManager, space: &Space<Window>, surface: 
     }
 }
 
-impl Smallvil {
+impl Twm {
     fn unconstrain_popup(&self, popup: &PopupSurface) {
         let Ok(root) = find_popup_root_surface(&PopupKind::Xdg(popup.clone())) else {
             return;

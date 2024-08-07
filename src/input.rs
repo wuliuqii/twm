@@ -1,29 +1,60 @@
 use smithay::backend::input::{
     AbsolutePositionEvent, Axis, AxisSource, ButtonState, Event, InputBackend, InputEvent,
-    KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent,
+    KeyState, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent,
 };
-use smithay::input::keyboard::FilterResult;
+use smithay::input::keyboard::{FilterResult, Keysym};
 use smithay::input::pointer::{AxisFrame, ButtonEvent, MotionEvent};
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::utils::SERIAL_COUNTER;
 
-use crate::state::Smallvil;
+use crate::state::Twm;
 
-impl Smallvil {
+enum KeyAction {
+    Quit,
+    Terminal,
+}
+
+impl Twm {
     pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
+        trace!("process_input_event");
+
         match event {
             InputEvent::Keyboard { event, .. } => {
                 let serial = SERIAL_COUNTER.next_serial();
                 let time = Event::time_msec(&event);
+                let press_state = event.state();
 
-                self.seat.get_keyboard().unwrap().input::<(), _>(
+                let action = self.seat.get_keyboard().unwrap().input(
                     self,
                     event.key_code(),
-                    event.state(),
+                    press_state,
                     serial,
                     time,
-                    |_, _, _| FilterResult::Forward,
+                    |_, _, keysym| {
+                        if press_state == KeyState::Pressed {
+                            if keysym.modified_sym() == Keysym::Q {
+                                FilterResult::Intercept(KeyAction::Quit)
+                            } else if keysym.modified_sym() == Keysym::T {
+                                FilterResult::Intercept(KeyAction::Terminal)
+                            } else {
+                                FilterResult::Forward
+                            }
+                        } else {
+                            FilterResult::Forward
+                        }
+                    },
                 );
+
+                match action {
+                    Some(KeyAction::Quit) => {
+                        info!("quitting because Q was pressed");
+                        self.loop_signal.stop();
+                    }
+                    Some(KeyAction::Terminal) => {
+                        std::process::Command::new("foot").spawn().ok();
+                    }
+                    None => {}
+                }
             }
             InputEvent::PointerMotion { .. } => {}
             InputEvent::PointerMotionAbsolute { event, .. } => {

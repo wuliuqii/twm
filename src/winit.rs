@@ -8,7 +8,7 @@ use smithay::output::{Mode, Output, PhysicalProperties, Subpixel};
 use smithay::reexports::calloop::EventLoop;
 use smithay::utils::{Rectangle, Transform};
 
-use crate::{CalloopData, Smallvil};
+use crate::{CalloopData, Twm};
 
 pub fn init_winit(
     event_loop: &mut EventLoop<CalloopData>,
@@ -29,11 +29,11 @@ pub fn init_winit(
         PhysicalProperties {
             size: (0, 0).into(),
             subpixel: Subpixel::Unknown,
-            make: "Smithay".into(),
+            make: "twm".into(),
             model: "Winit".into(),
         },
     );
-    let _global = output.create_global::<Smallvil>(display_handle);
+    let _global = output.create_global::<Twm>(display_handle);
     output.change_current_state(
         Some(mode),
         Some(Transform::Flipped180),
@@ -55,6 +55,7 @@ pub fn init_winit(
             let state = &mut data.state;
 
             match event {
+                WinitEvent::Input(event) => state.process_input_event(event),
                 WinitEvent::Resized { size, .. } => {
                     output.change_current_state(
                         Some(Mode {
@@ -66,7 +67,6 @@ pub fn init_winit(
                         None,
                     );
                 }
-                WinitEvent::Input(event) => state.process_input_event(event),
                 WinitEvent::Redraw => {
                     let size = backend.window_size();
                     let damage = Rectangle::from_loc_and_size((0, 0), size);

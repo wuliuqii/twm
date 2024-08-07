@@ -12,9 +12,9 @@ use smithay::{delegate_compositor, delegate_shm};
 use super::xdg_shell;
 use crate::grabs::resize_grab;
 use crate::state::ClientState;
-use crate::Smallvil;
+use crate::Twm;
 
-impl CompositorHandler for Smallvil {
+impl CompositorHandler for Twm {
     fn compositor_state(&mut self) -> &mut CompositorState {
         &mut self.compositor_state
     }
@@ -44,15 +44,15 @@ impl CompositorHandler for Smallvil {
     }
 }
 
-impl BufferHandler for Smallvil {
+impl BufferHandler for Twm {
     fn buffer_destroyed(&mut self, _buffer: &wl_buffer::WlBuffer) {}
 }
 
-impl ShmHandler for Smallvil {
+impl ShmHandler for Twm {
     fn shm_state(&self) -> &ShmState {
         &self.shm_state
     }
 }
 
-delegate_compositor!(Smallvil);
-delegate_shm!(Smallvil);
+delegate_compositor!(Twm);
+delegate_shm!(Twm);

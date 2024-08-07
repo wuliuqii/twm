@@ -15,7 +15,6 @@
       devShells = eachSystem ({ pkgs }: {
         default = pkgs.mkShell (with pkgs; rec {
           packages = [
-            weston
           ];
 
           nativeBuildInputs = [

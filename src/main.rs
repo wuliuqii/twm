@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate tracing;
+
 mod handlers;
 
 mod grabs;
@@ -5,27 +8,33 @@ mod input;
 mod state;
 mod winit;
 
+use std::env;
+
 use smithay::reexports::calloop::EventLoop;
 use smithay::reexports::wayland_server::{Display, DisplayHandle};
-pub use state::Smallvil;
+pub use state::Twm;
+use tracing_subscriber::EnvFilter;
 
 pub struct CalloopData {
-    state: Smallvil,
+    state: Twm,
     display_handle: DisplayHandle,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    if let Ok(env_filter) = tracing_subscriber::EnvFilter::try_from_default_env() {
-        tracing_subscriber::fmt().with_env_filter(env_filter).init();
-    } else {
-        tracing_subscriber::fmt().init();
-    }
+    env::set_var("RUST_BACKTRACE", "1");
 
-    let mut event_loop: EventLoop<CalloopData> = EventLoop::try_new()?;
+    let directives = env::var("RUST_LOG").unwrap_or_else(|_| "twm=debug,info".to_owned());
+    let env_filter = EnvFilter::builder().parse_lossy(directives);
+    tracing_subscriber::fmt()
+        .compact()
+        .with_env_filter(env_filter)
+        .init();
 
-    let display: Display<Smallvil> = Display::new()?;
+    let mut event_loop: EventLoop<CalloopData> = EventLoop::try_new().unwrap();
+
+    let display: Display<Twm> = Display::new().unwrap();
     let display_handle = display.handle();
-    let state = Smallvil::new(&mut event_loop, display);
+    let state = Twm::new(&mut event_loop, display);
 
     let mut data = CalloopData {
         state,
@@ -43,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::Command::new(command).spawn().ok();
         }
         _ => {
-            std::process::Command::new("weston-terminal").spawn().ok();
+            std::process::Command::new("foot").spawn().ok();
         }
     }
 

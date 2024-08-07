@@ -14,14 +14,14 @@ use smithay::wayland::selection::data_device::{
 use smithay::wayland::selection::SelectionHandler;
 use smithay::{delegate_data_device, delegate_output, delegate_seat};
 
-use crate::Smallvil;
+use crate::Twm;
 
-impl SeatHandler for Smallvil {
+impl SeatHandler for Twm {
     type KeyboardFocus = WlSurface;
     type PointerFocus = WlSurface;
     type TouchFocus = WlSurface;
 
-    fn seat_state(&mut self) -> &mut SeatState<Smallvil> {
+    fn seat_state(&mut self) -> &mut SeatState<Twm> {
         &mut self.seat_state
     }
 
@@ -39,30 +39,30 @@ impl SeatHandler for Smallvil {
     }
 }
 
-delegate_seat!(Smallvil);
+delegate_seat!(Twm);
 
 //
 // Wl Data Device
 //
 
-impl SelectionHandler for Smallvil {
+impl SelectionHandler for Twm {
     type SelectionUserData = ();
 }
 
-impl DataDeviceHandler for Smallvil {
+impl DataDeviceHandler for Twm {
     fn data_device_state(&self) -> &DataDeviceState {
         &self.data_device_state
     }
 }
 
-impl ClientDndGrabHandler for Smallvil {}
-impl ServerDndGrabHandler for Smallvil {}
+impl ClientDndGrabHandler for Twm {}
+impl ServerDndGrabHandler for Twm {}
 
-delegate_data_device!(Smallvil);
+delegate_data_device!(Twm);
 
 //
 // Wl Output & Xdg Output
 //
 
-impl OutputHandler for Smallvil {}
-delegate_output!(Smallvil);
+impl OutputHandler for Twm {}
+delegate_output!(Twm);
