@@ -12,11 +12,11 @@ use smithay::{delegate_compositor, delegate_shm};
 use super::xdg_shell;
 use crate::grabs::resize_grab;
 use crate::state::ClientState;
-use crate::Twm;
+use crate::State;
 
-impl CompositorHandler for Twm {
+impl CompositorHandler for State {
     fn compositor_state(&mut self) -> &mut CompositorState {
-        &mut self.compositor_state
+        &mut self.twm.compositor_state
     }
 
     fn client_compositor_state<'a>(&self, client: &'a Client) -> &'a CompositorClientState {
@@ -31,6 +31,7 @@ impl CompositorHandler for Twm {
                 root = parent;
             }
             if let Some(window) = self
+                .twm
                 .space
                 .elements()
                 .find(|w| w.toplevel().unwrap().wl_surface() == &root)
@@ -39,20 +40,20 @@ impl CompositorHandler for Twm {
             }
         };
 
-        xdg_shell::handle_commit(&mut self.popups, &self.space, surface);
-        resize_grab::handle_commit(&mut self.space, surface);
+        xdg_shell::handle_commit(&mut self.twm.popups, &self.twm.space, surface);
+        resize_grab::handle_commit(&mut self.twm.space, surface);
     }
 }
 
-impl BufferHandler for Twm {
+impl BufferHandler for State {
     fn buffer_destroyed(&mut self, _buffer: &wl_buffer::WlBuffer) {}
 }
 
-impl ShmHandler for Twm {
+impl ShmHandler for State {
     fn shm_state(&self) -> &ShmState {
-        &self.shm_state
+        &self.twm.shm_state
     }
 }
 
-delegate_compositor!(Twm);
-delegate_shm!(Twm);
+delegate_compositor!(State);
+delegate_shm!(State);

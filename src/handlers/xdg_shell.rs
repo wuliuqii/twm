@@ -16,21 +16,21 @@ use smithay::wayland::shell::xdg::{
 };
 
 use crate::grabs::{MoveSurfaceGrab, ResizeSurfaceGrab};
-use crate::Twm;
+use crate::State;
 
-impl XdgShellHandler for Twm {
+impl XdgShellHandler for State {
     fn xdg_shell_state(&mut self) -> &mut XdgShellState {
-        &mut self.xdg_shell_state
+        &mut self.twm.xdg_shell_state
     }
 
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         let window = Window::new_wayland_window(surface);
-        self.space.map_element(window, (0, 0), false);
+        self.twm.space.map_element(window, (0, 0), false);
     }
 
     fn new_popup(&mut self, surface: PopupSurface, _positioner: PositionerState) {
         self.unconstrain_popup(&surface);
-        let _ = self.popups.track_popup(PopupKind::Xdg(surface));
+        let _ = self.twm.popups.track_popup(PopupKind::Xdg(surface));
     }
 
     fn reposition_request(
@@ -57,12 +57,13 @@ impl XdgShellHandler for Twm {
             let pointer = seat.get_pointer().unwrap();
 
             let window = self
+                .twm
                 .space
                 .elements()
                 .find(|w| w.toplevel().unwrap().wl_surface() == wl_surface)
                 .unwrap()
                 .clone();
-            let initial_window_location = self.space.element_location(&window).unwrap();
+            let initial_window_location = self.twm.space.element_location(&window).unwrap();
 
             let grab = MoveSurfaceGrab {
                 start_data,
@@ -89,12 +90,13 @@ impl XdgShellHandler for Twm {
             let pointer = seat.get_pointer().unwrap();
 
             let window = self
+                .twm
                 .space
                 .elements()
                 .find(|w| w.toplevel().unwrap().wl_surface() == wl_surface)
                 .unwrap()
                 .clone();
-            let initial_window_location = self.space.element_location(&window).unwrap();
+            let initial_window_location = self.twm.space.element_location(&window).unwrap();
             let initial_window_size = window.geometry().size;
 
             surface.with_pending_state(|state| {
@@ -120,13 +122,13 @@ impl XdgShellHandler for Twm {
 }
 
 // Xdg Shell
-delegate_xdg_shell!(Twm);
+delegate_xdg_shell!(State);
 
 fn check_grab(
-    seat: &Seat<Twm>,
+    seat: &Seat<State>,
     surface: &WlSurface,
     serial: Serial,
-) -> Option<PointerGrabStartData<Twm>> {
+) -> Option<PointerGrabStartData<State>> {
     let pointer = seat.get_pointer()?;
 
     // Check that this surface has a click grab.
@@ -193,12 +195,13 @@ pub fn handle_commit(popups: &mut PopupManager, space: &Space<Window>, surface: 
     }
 }
 
-impl Twm {
+impl State {
     fn unconstrain_popup(&self, popup: &PopupSurface) {
         let Ok(root) = find_popup_root_surface(&PopupKind::Xdg(popup.clone())) else {
             return;
         };
         let Some(window) = self
+            .twm
             .space
             .elements()
             .find(|w| w.toplevel().unwrap().wl_surface() == &root)
@@ -206,9 +209,9 @@ impl Twm {
             return;
         };
 
-        let output = self.space.outputs().next().unwrap();
-        let output_geo = self.space.output_geometry(output).unwrap();
-        let window_geo = self.space.element_geometry(window).unwrap();
+        let output = self.twm.space.outputs().next().unwrap();
+        let output_geo = self.twm.space.output_geometry(output).unwrap();
+        let window_geo = self.twm.space.element_geometry(window).unwrap();
 
         // The target geometry for the positioner should be relative to its parent's geometry, so
         // we will compute that here.

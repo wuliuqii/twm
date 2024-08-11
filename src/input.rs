@@ -7,14 +7,14 @@ use smithay::input::pointer::{AxisFrame, ButtonEvent, MotionEvent};
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::utils::SERIAL_COUNTER;
 
-use crate::state::Twm;
+use crate::state::State;
 
 enum KeyAction {
     Quit,
     Terminal,
 }
 
-impl Twm {
+impl State {
     pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
         trace!("process_input_event");
 
@@ -24,7 +24,7 @@ impl Twm {
                 let time = Event::time_msec(&event);
                 let press_state = event.state();
 
-                let action = self.seat.get_keyboard().unwrap().input(
+                let action = self.twm.seat.get_keyboard().unwrap().input(
                     self,
                     event.key_code(),
                     press_state,
@@ -48,7 +48,7 @@ impl Twm {
                 match action {
                     Some(KeyAction::Quit) => {
                         info!("quitting because Q was pressed");
-                        self.loop_signal.stop();
+                        self.twm.stop_signal.stop();
                     }
                     Some(KeyAction::Terminal) => {
                         std::process::Command::new("foot").spawn().ok();
@@ -58,17 +58,17 @@ impl Twm {
             }
             InputEvent::PointerMotion { .. } => {}
             InputEvent::PointerMotionAbsolute { event, .. } => {
-                let output = self.space.outputs().next().unwrap();
+                let output = self.twm.space.outputs().next().unwrap();
 
-                let output_geo = self.space.output_geometry(output).unwrap();
+                let output_geo = self.twm.space.output_geometry(output).unwrap();
 
                 let pos = event.position_transformed(output_geo.size) + output_geo.loc.to_f64();
 
                 let serial = SERIAL_COUNTER.next_serial();
 
-                let pointer = self.seat.get_pointer().unwrap();
+                let pointer = self.twm.seat.get_pointer().unwrap();
 
-                let under = self.surface_under(pos);
+                let under = self.twm.surface_under(pos);
 
                 pointer.motion(
                     self,
@@ -82,8 +82,8 @@ impl Twm {
                 pointer.frame(self);
             }
             InputEvent::PointerButton { event, .. } => {
-                let pointer = self.seat.get_pointer().unwrap();
-                let keyboard = self.seat.get_keyboard().unwrap();
+                let pointer = self.twm.seat.get_pointer().unwrap();
+                let keyboard = self.twm.seat.get_keyboard().unwrap();
 
                 let serial = SERIAL_COUNTER.next_serial();
 
@@ -93,21 +93,22 @@ impl Twm {
 
                 if ButtonState::Pressed == button_state && !pointer.is_grabbed() {
                     if let Some((window, _loc)) = self
+                        .twm
                         .space
                         .element_under(pointer.current_location())
                         .map(|(w, l)| (w.clone(), l))
                     {
-                        self.space.raise_element(&window, true);
+                        self.twm.space.raise_element(&window, true);
                         keyboard.set_focus(
                             self,
                             Some(window.toplevel().unwrap().wl_surface().clone()),
                             serial,
                         );
-                        self.space.elements().for_each(|window| {
+                        self.twm.space.elements().for_each(|window| {
                             window.toplevel().unwrap().send_pending_configure();
                         });
                     } else {
-                        self.space.elements().for_each(|window| {
+                        self.twm.space.elements().for_each(|window| {
                             window.set_activated(false);
                             window.toplevel().unwrap().send_pending_configure();
                         });
@@ -161,7 +162,7 @@ impl Twm {
                     }
                 }
 
-                let pointer = self.seat.get_pointer().unwrap();
+                let pointer = self.twm.seat.get_pointer().unwrap();
                 pointer.axis(self, frame);
                 pointer.frame(self);
             }

@@ -14,15 +14,15 @@ use smithay::wayland::selection::data_device::{
 use smithay::wayland::selection::SelectionHandler;
 use smithay::{delegate_data_device, delegate_output, delegate_seat};
 
-use crate::Twm;
+use crate::State;
 
-impl SeatHandler for Twm {
+impl SeatHandler for State {
     type KeyboardFocus = WlSurface;
     type PointerFocus = WlSurface;
     type TouchFocus = WlSurface;
 
-    fn seat_state(&mut self) -> &mut SeatState<Twm> {
-        &mut self.seat_state
+    fn seat_state(&mut self) -> &mut SeatState<State> {
+        &mut self.twm.seat_state
     }
 
     fn cursor_image(
@@ -33,36 +33,36 @@ impl SeatHandler for Twm {
     }
 
     fn focus_changed(&mut self, seat: &Seat<Self>, focused: Option<&WlSurface>) {
-        let dh = &self.display_handle;
+        let dh = &self.twm.display_handle;
         let client = focused.and_then(|s| dh.get_client(s.id()).ok());
         set_data_device_focus(dh, seat, client);
     }
 }
 
-delegate_seat!(Twm);
+delegate_seat!(State);
 
 //
 // Wl Data Device
 //
 
-impl SelectionHandler for Twm {
+impl SelectionHandler for State {
     type SelectionUserData = ();
 }
 
-impl DataDeviceHandler for Twm {
+impl DataDeviceHandler for State {
     fn data_device_state(&self) -> &DataDeviceState {
-        &self.data_device_state
+        &self.twm.data_device_state
     }
 }
 
-impl ClientDndGrabHandler for Twm {}
-impl ServerDndGrabHandler for Twm {}
+impl ClientDndGrabHandler for State {}
+impl ServerDndGrabHandler for State {}
 
-delegate_data_device!(Twm);
+delegate_data_device!(State);
 
 //
 // Wl Output & Xdg Output
 //
 
-impl OutputHandler for Twm {}
-delegate_output!(Twm);
+impl OutputHandler for State {}
+delegate_output!(State);

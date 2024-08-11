@@ -13,7 +13,7 @@ use smithay::utils::{Logical, Point, Rectangle, Size};
 use smithay::wayland::compositor;
 use smithay::wayland::shell::xdg::SurfaceCachedState;
 
-use crate::Twm;
+use crate::State;
 
 bitflags::bitflags! {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -39,7 +39,7 @@ impl From<xdg_toplevel::ResizeEdge> for ResizeEdge {
 }
 
 pub struct ResizeSurfaceGrab {
-    start_data: PointerGrabStartData<Twm>,
+    start_data: PointerGrabStartData<State>,
     window: Window,
 
     edges: ResizeEdge,
@@ -50,7 +50,7 @@ pub struct ResizeSurfaceGrab {
 
 impl ResizeSurfaceGrab {
     pub fn start(
-        start_data: PointerGrabStartData<Twm>,
+        start_data: PointerGrabStartData<State>,
         window: Window,
         edges: ResizeEdge,
         initial_window_rect: Rectangle<i32, Logical>,
@@ -74,11 +74,11 @@ impl ResizeSurfaceGrab {
     }
 }
 
-impl PointerGrab<Twm> for ResizeSurfaceGrab {
+impl PointerGrab<State> for ResizeSurfaceGrab {
     fn motion(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         _focus: Option<(WlSurface, Point<f64, Logical>)>,
         event: &MotionEvent,
     ) {
@@ -135,8 +135,8 @@ impl PointerGrab<Twm> for ResizeSurfaceGrab {
 
     fn relative_motion(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         focus: Option<(WlSurface, Point<f64, Logical>)>,
         event: &RelativeMotionEvent,
     ) {
@@ -145,8 +145,8 @@ impl PointerGrab<Twm> for ResizeSurfaceGrab {
 
     fn button(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         event: &ButtonEvent,
     ) {
         handle.button(data, event);
@@ -178,21 +178,21 @@ impl PointerGrab<Twm> for ResizeSurfaceGrab {
 
     fn axis(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         details: AxisFrame,
     ) {
         handle.axis(data, details)
     }
 
-    fn frame(&mut self, data: &mut Twm, handle: &mut PointerInnerHandle<'_, Twm>) {
+    fn frame(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>) {
         handle.frame(data);
     }
 
     fn gesture_swipe_begin(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         event: &GestureSwipeBeginEvent,
     ) {
         handle.gesture_swipe_begin(data, event)
@@ -200,8 +200,8 @@ impl PointerGrab<Twm> for ResizeSurfaceGrab {
 
     fn gesture_swipe_update(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         event: &GestureSwipeUpdateEvent,
     ) {
         handle.gesture_swipe_update(data, event)
@@ -209,8 +209,8 @@ impl PointerGrab<Twm> for ResizeSurfaceGrab {
 
     fn gesture_swipe_end(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         event: &GestureSwipeEndEvent,
     ) {
         handle.gesture_swipe_end(data, event)
@@ -218,8 +218,8 @@ impl PointerGrab<Twm> for ResizeSurfaceGrab {
 
     fn gesture_pinch_begin(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         event: &GesturePinchBeginEvent,
     ) {
         handle.gesture_pinch_begin(data, event)
@@ -227,8 +227,8 @@ impl PointerGrab<Twm> for ResizeSurfaceGrab {
 
     fn gesture_pinch_update(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         event: &GesturePinchUpdateEvent,
     ) {
         handle.gesture_pinch_update(data, event)
@@ -236,8 +236,8 @@ impl PointerGrab<Twm> for ResizeSurfaceGrab {
 
     fn gesture_pinch_end(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         event: &GesturePinchEndEvent,
     ) {
         handle.gesture_pinch_end(data, event)
@@ -245,8 +245,8 @@ impl PointerGrab<Twm> for ResizeSurfaceGrab {
 
     fn gesture_hold_begin(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         event: &GestureHoldBeginEvent,
     ) {
         handle.gesture_hold_begin(data, event)
@@ -254,18 +254,18 @@ impl PointerGrab<Twm> for ResizeSurfaceGrab {
 
     fn gesture_hold_end(
         &mut self,
-        data: &mut Twm,
-        handle: &mut PointerInnerHandle<'_, Twm>,
+        data: &mut State,
+        handle: &mut PointerInnerHandle<'_, State>,
         event: &GestureHoldEndEvent,
     ) {
         handle.gesture_hold_end(data, event)
     }
 
-    fn start_data(&self) -> &PointerGrabStartData<Twm> {
+    fn start_data(&self) -> &PointerGrabStartData<State> {
         &self.start_data
     }
 
-    fn unset(&mut self, _data: &mut Twm) {}
+    fn unset(&mut self, _data: &mut State) {}
 }
 
 /// State of the resize operation.

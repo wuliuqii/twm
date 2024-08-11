@@ -1,10 +1,13 @@
-use std::ffi::OsString;
+use std::env;
 use std::sync::Arc;
+use std::time::Duration;
 
+use smithay::desktop::space::space_render_elements;
 use smithay::desktop::{PopupManager, Space, Window, WindowSurfaceType};
 use smithay::input::{Seat, SeatState};
+use smithay::output::Output;
 use smithay::reexports::calloop::generic::Generic;
-use smithay::reexports::calloop::{EventLoop, Interest, LoopSignal, Mode, PostAction};
+use smithay::reexports::calloop::{Interest, LoopHandle, LoopSignal, Mode, PostAction};
 use smithay::reexports::wayland_server::backend::{ClientData, ClientId, DisconnectReason};
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::reexports::wayland_server::{Display, DisplayHandle};
@@ -16,45 +19,82 @@ use smithay::wayland::shell::xdg::XdgShellState;
 use smithay::wayland::shm::ShmState;
 use smithay::wayland::socket::ListeningSocketSource;
 
-use crate::CalloopData;
+use crate::backend::tty::Tty;
+use crate::backend::winit::Winit;
+use crate::backend::Backend;
+use crate::LoopData;
 
 pub struct Twm {
     pub start_time: std::time::Instant,
-    pub socket_name: OsString,
+    pub event_loop: LoopHandle<'static, LoopData>,
+    pub stop_signal: LoopSignal,
     pub display_handle: DisplayHandle,
 
     pub space: Space<Window>,
-    pub loop_signal: LoopSignal,
 
     // Smithay State
     pub compositor_state: CompositorState,
     pub xdg_shell_state: XdgShellState,
     pub shm_state: ShmState,
     pub output_manager_state: OutputManagerState,
-    pub seat_state: SeatState<Twm>,
+    pub seat_state: SeatState<State>,
     pub data_device_state: DataDeviceState,
     pub popups: PopupManager,
 
-    pub seat: Seat<Self>,
+    pub seat: Seat<State>,
+    pub output: Option<Output>,
+}
+
+pub struct State {
+    pub backend: Backend,
+    pub twm: Twm,
+}
+
+impl State {
+    pub fn new(
+        event_loop: LoopHandle<'static, LoopData>,
+        stop_signal: LoopSignal,
+        display: Display<State>,
+    ) -> Self {
+        let has_display =
+            env::var_os("WAYLAND_DISPLAY").is_some() || env::var_os("DISPLAY").is_some();
+
+        let mut backend = if has_display {
+            Backend::Winit(Winit::new(event_loop.clone()))
+        } else {
+            Backend::Tty(Tty::new(event_loop.clone()))
+        };
+
+        let mut twm = Twm::new(event_loop, stop_signal, display, &backend);
+        backend.init(&mut twm);
+
+        Self { backend, twm }
+    }
 }
 
 impl Twm {
-    pub fn new(event_loop: &mut EventLoop<CalloopData>, display: Display<Self>) -> Self {
+    pub fn new(
+        event_loop: LoopHandle<'static, LoopData>,
+        stop_signal: LoopSignal,
+        display: Display<State>,
+        backend: &Backend,
+    ) -> Self {
         let start_time = std::time::Instant::now();
 
-        let dh = display.handle();
+        let display_handle = display.handle();
 
-        let compositor_state = CompositorState::new::<Self>(&dh);
-        let xdg_shell_state = XdgShellState::new::<Self>(&dh);
-        let shm_state = ShmState::new::<Self>(&dh, vec![]);
-        let output_manager_state = OutputManagerState::new_with_xdg_output::<Self>(&dh);
+        let compositor_state = CompositorState::new::<State>(&display_handle);
+        let xdg_shell_state = XdgShellState::new::<State>(&display_handle);
+        let shm_state = ShmState::new::<State>(&display_handle, vec![]);
+        let output_manager_state =
+            OutputManagerState::new_with_xdg_output::<State>(&display_handle);
         let mut seat_state = SeatState::new();
-        let data_device_state = DataDeviceState::new::<Self>(&dh);
+        let data_device_state = DataDeviceState::new::<State>(&display_handle);
         let popups = PopupManager::default();
 
         // A seat is a group of keyboards, pointer and touch devices.
         // A seat typically has a pointer and maintains a keyboard focus and a pointer focus.
-        let mut seat: Seat<Self> = seat_state.new_wl_seat(&dh, "winit");
+        let mut seat: Seat<State> = seat_state.new_wl_seat(&display_handle, backend.seat_name());
 
         // Notify clients that we have a keyboard, for the sake of the example we assume that
         // keyboard is always present. You may want to track keyboard hot-plug in real
@@ -71,34 +111,6 @@ impl Twm {
         // Outputs become views of a part of the Space and can be rendered via Space::render_output.
         let space = Space::default();
 
-        let socket_name = Self::init_wayland_listener(display, event_loop);
-
-        // Get the loop signal, used to stop the event loop
-        let loop_signal = event_loop.get_signal();
-
-        Self {
-            start_time,
-            display_handle: dh,
-
-            space,
-            loop_signal,
-            socket_name,
-
-            compositor_state,
-            xdg_shell_state,
-            shm_state,
-            output_manager_state,
-            seat_state,
-            data_device_state,
-            popups,
-            seat,
-        }
-    }
-
-    fn init_wayland_listener(
-        display: Display<Twm>,
-        event_loop: &mut EventLoop<CalloopData>,
-    ) -> OsString {
         // Creates a new listening socket, automatically choosing the next available `wayland`
         // socket name.
         let listening_socket = ListeningSocketSource::new_auto().unwrap();
@@ -107,40 +119,59 @@ impl Twm {
         // Clients will connect to this socket.
         let socket_name = listening_socket.socket_name().to_os_string();
 
-        let handle = event_loop.handle();
-
         event_loop
-            .handle()
-            .insert_source(listening_socket, move |client_stream, _, state| {
+            .insert_source(listening_socket, move |client_stream, _, data| {
                 // Inside the callback, you should insert the client into the display.
                 //
                 // You may also associate some data with the client when inserting the client.
-                state
+                data.state
+                    .twm
                     .display_handle
                     .insert_client(client_stream, Arc::new(ClientState::default()))
                     .unwrap();
             })
             .expect("Failed to init the wayland event source.");
 
+        std::env::set_var("WAYLAND_DISPLAY", &socket_name);
+        info!(
+            "listening on Wayland socket: {}",
+            socket_name.to_string_lossy()
+        );
+
         // You also need to add the display itself to the event loop, so that client events will be
         // processed by wayland-server.
-        handle
+        event_loop
             .insert_source(
                 Generic::new(display, Interest::READ, Mode::Level),
-                |_, display, state| {
-                    // Safety: we don't drop the display
+                |_, display, data| {
+                    // SAFETY: we don't drop the display.
                     unsafe {
-                        display
-                            .get_mut()
-                            .dispatch_clients(&mut state.state)
-                            .unwrap();
+                        display.get_mut().dispatch_clients(&mut data.state).unwrap();
                     }
                     Ok(PostAction::Continue)
                 },
             )
             .unwrap();
 
-        socket_name
+        Self {
+            start_time,
+            stop_signal,
+            event_loop,
+            display_handle,
+
+            space,
+
+            compositor_state,
+            xdg_shell_state,
+            shm_state,
+            output_manager_state,
+            seat_state,
+            data_device_state,
+            popups,
+
+            seat,
+            output: None,
+        }
     }
 
     pub fn surface_under(
@@ -154,6 +185,29 @@ impl Twm {
                     .surface_under(pos - location.to_f64(), WindowSurfaceType::ALL)
                     .map(|(s, p)| (s, (p + location).to_f64()))
             })
+    }
+
+    pub fn redraw(&mut self, backend: &mut Backend) {
+        let elements = space_render_elements(
+            backend.renderer(),
+            [&self.space],
+            self.output.as_ref().unwrap(),
+            1.,
+        )
+        .unwrap();
+        backend.render(self, &elements);
+
+        let output = self.output.as_ref().unwrap();
+        self.space.elements().for_each(|window| {
+            window.send_frame(
+                output,
+                self.start_time.elapsed(),
+                Some(Duration::ZERO),
+                |_, _| Some(output.clone()),
+            )
+        });
+
+        self.space.refresh();
     }
 }
 
