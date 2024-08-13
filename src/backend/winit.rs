@@ -10,7 +10,7 @@ use smithay::reexports::calloop::timer::{TimeoutAction, Timer};
 use smithay::reexports::calloop::LoopHandle;
 use smithay::utils::{Rectangle, Transform};
 
-use crate::state::{State, Twm};
+use crate::state::{OutputRenderElements, State, Twm};
 use crate::LoopData;
 
 pub struct Winit {
@@ -31,7 +31,10 @@ impl Winit {
     pub fn render(
         &mut self,
         twm: &mut Twm,
-        elements: &[SpaceRenderElements<GlesRenderer, WaylandSurfaceRenderElement<GlesRenderer>>],
+        elements: &[OutputRenderElements<
+            GlesRenderer,
+            WaylandSurfaceRenderElement<GlesRenderer>,
+        >],
     ) {
         let size = self.backend.window_size();
         let damage = Rectangle::from_loc_and_size((0, 0), size);
@@ -92,7 +95,7 @@ impl Winit {
                                 None,
                             );
                     }
-                    WinitEvent::Input(event) => data.state.process_input_event(event),
+                    WinitEvent::Input(event) => data.state.process_input_event(&mut |_| (), event),
                     WinitEvent::CloseRequested => {
                         data.state.twm.stop_signal.stop();
                     }

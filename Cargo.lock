@@ -1486,6 +1486,7 @@ dependencies = [
  "smithay",
  "tracing",
  "tracing-subscriber",
+ "tracy-client",
 ]
 
 [[package]]

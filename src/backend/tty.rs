@@ -9,9 +9,9 @@ use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
 use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::backend::session::libseat::LibSeatSession;
 use smithay::backend::session::Session;
-use smithay::desktop::space::SpaceRenderElements;
 use smithay::reexports::calloop::{LoopHandle, RegistrationToken};
 
+use crate::state::OutputRenderElements;
 use crate::LoopData;
 
 const SUPPORTED_COLOR_FORMATS: &[Fourcc] = &[Fourcc::Argb8888, Fourcc::Abgr8888];
@@ -46,7 +46,10 @@ impl Tty {
     pub fn render(
         &mut self,
         twm: &mut crate::Twm,
-        elements: &[SpaceRenderElements<GlesRenderer, WaylandSurfaceRenderElement<GlesRenderer>>],
+        elements: &[OutputRenderElements<
+            GlesRenderer,
+            WaylandSurfaceRenderElement<GlesRenderer>,
+        >],
     ) {
         todo!()
     }

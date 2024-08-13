@@ -1,9 +1,9 @@
 use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
 use smithay::backend::renderer::gles::GlesRenderer;
-use smithay::desktop::space::SpaceRenderElements;
 use tty::Tty;
 use winit::Winit;
 
+use crate::state::OutputRenderElements;
 use crate::Twm;
 
 pub mod tty;
@@ -39,7 +39,10 @@ impl Backend {
     pub fn render(
         &mut self,
         twm: &mut Twm,
-        elements: &[SpaceRenderElements<GlesRenderer, WaylandSurfaceRenderElement<GlesRenderer>>],
+        elements: &[OutputRenderElements<
+            GlesRenderer,
+            WaylandSurfaceRenderElement<GlesRenderer>,
+        >],
     ) {
         match self {
             Backend::Tty(tty) => tty.render(twm, elements),
