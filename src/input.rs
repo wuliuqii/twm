@@ -1,9 +1,9 @@
 use smithay::backend::input::{
     AbsolutePositionEvent, Axis, AxisSource, ButtonState, Event, InputBackend, InputEvent,
-    KeyState, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent,
+    KeyState, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent, PointerMotionEvent,
 };
 use smithay::input::keyboard::{FilterResult, Keysym};
-use smithay::input::pointer::{AxisFrame, ButtonEvent, MotionEvent};
+use smithay::input::pointer::{AxisFrame, ButtonEvent, MotionEvent, RelativeMotionEvent};
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::utils::SERIAL_COUNTER;
 
@@ -12,10 +12,15 @@ use crate::state::State;
 enum KeyAction {
     Quit,
     Terminal,
+    ChangeVt(i32),
 }
 
 impl State {
-    pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
+    pub fn process_input_event<I: InputBackend>(
+        &mut self,
+        change_vt: &mut dyn FnMut(i32),
+        event: InputEvent<I>,
+    ) {
         trace!("process_input_event");
 
         match event {
@@ -32,10 +37,20 @@ impl State {
                     time,
                     |_, _, keysym| {
                         if press_state == KeyState::Pressed {
-                            if keysym.modified_sym() == Keysym::Q {
+                            let sym = keysym.modified_sym();
+                            if sym == Keysym::Q {
                                 FilterResult::Intercept(KeyAction::Quit)
-                            } else if keysym.modified_sym() == Keysym::T {
+                            } else if sym == Keysym::T {
                                 FilterResult::Intercept(KeyAction::Terminal)
+                            } else if sym >= Keysym::XF86_Switch_VT_1
+                                || sym <= Keysym::XF86_Switch_VT_12
+                            {
+                                // let vt = (sym.raw() - Keysym::XF86_Switch_VT_1.raw() + 1) as i32;
+                                let vt = sym.raw().wrapping_sub(Keysym::XF86_Switch_VT_1.raw())
+                                    as i32
+                                    + 1;
+
+                                FilterResult::Intercept(KeyAction::ChangeVt(vt))
                             } else {
                                 FilterResult::Forward
                             }
@@ -53,10 +68,47 @@ impl State {
                     Some(KeyAction::Terminal) => {
                         std::process::Command::new("foot").spawn().ok();
                     }
+                    Some(KeyAction::ChangeVt(vt)) => {
+                        (*change_vt)(vt);
+                    }
                     None => {}
                 }
             }
-            InputEvent::PointerMotion { .. } => {}
+            InputEvent::PointerMotion { event, .. } => {
+                let serial = SERIAL_COUNTER.next_serial();
+
+                let pointer = self.twm.seat.get_pointer().unwrap();
+                let mut pointer_location = pointer.current_location();
+
+                pointer_location += event.delta();
+
+                let output = self.twm.space.outputs().next().unwrap();
+                let output_geo = self.twm.space.output_geometry(output).unwrap();
+
+                pointer_location.x = pointer_location.x.clamp(0., output_geo.size.w as f64);
+                pointer_location.y = pointer_location.y.clamp(0., output_geo.size.h as f64);
+
+                let under = self.twm.surface_under(pointer_location);
+                pointer.motion(
+                    self,
+                    under.clone(),
+                    &MotionEvent {
+                        location: pointer_location,
+                        serial,
+                        time: event.time_msec(),
+                    },
+                );
+
+                pointer.relative_motion(
+                    self,
+                    under,
+                    &RelativeMotionEvent {
+                        delta: event.delta(),
+                        delta_unaccel: event.delta_unaccel(),
+                        utime: event.time(),
+                    },
+                );
+            }
             InputEvent::PointerMotionAbsolute { event, .. } => {
                 let output = self.twm.space.outputs().next().unwrap();
 

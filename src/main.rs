@@ -30,16 +30,18 @@ fn main() {
         .with_env_filter(env_filter)
         .init();
 
+    let _client = tracy_client::Client::start();
+
     let mut event_loop: EventLoop<LoopData> = EventLoop::try_new().unwrap();
     let display = Display::new().unwrap();
-    let display_handle = display.handle();
     let state = State::new(event_loop.handle(), event_loop.get_signal(), display);
 
     let mut data = LoopData { state };
 
     event_loop
         .run(None, &mut data, move |data| {
-            // twm is running
+            let _span = tracy_client::span!("loop callback");
+
             data.state.twm.display_handle.flush_clients().unwrap();
         })
         .unwrap();
