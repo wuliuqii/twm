@@ -4,12 +4,14 @@ use smithay::desktop::{
 };
 use smithay::input::pointer::{Focus, GrabStartData as PointerGrabStartData};
 use smithay::input::Seat;
+use smithay::output::Output;
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
-use smithay::reexports::wayland_server::protocol::wl_seat;
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
+use smithay::reexports::wayland_server::protocol::{wl_output, wl_seat};
 use smithay::reexports::wayland_server::Resource;
 use smithay::utils::{Rectangle, Serial};
 use smithay::wayland::compositor::with_states;
+use smithay::wayland::seat::WaylandFocus;
 use smithay::wayland::shell::xdg::{
     PopupSurface, PositionerState, ToplevelSurface, XdgPopupSurfaceData, XdgShellHandler,
     XdgShellState, XdgToplevelSurfaceData,
@@ -118,6 +120,80 @@ impl XdgShellHandler for State {
 
     fn grab(&mut self, _surface: PopupSurface, _seat: wl_seat::WlSeat, _serial: Serial) {
         // TODO popup grabs
+    }
+
+    fn fullscreen_request(
+        &mut self,
+        surface: ToplevelSurface,
+        wl_output: Option<wl_output::WlOutput>,
+    ) {
+        if surface
+            .current_state()
+            .capabilities
+            .contains(xdg_toplevel::WmCapabilities::Fullscreen)
+        {
+            // NOTE: This is only one part of the solution. We can set the
+            // location and configure size here, but the surface should be rendered fullscreen
+            // independently from its buffer size
+            let wl_surface = surface.wl_surface();
+
+            let output = wl_output
+                .as_ref()
+                .and_then(Output::from_resource)
+                .or_else(|| {
+                    let w = self
+                        .twm
+                        .space
+                        .elements()
+                        .find(|window| {
+                            window
+                                .wl_surface()
+                                .map(|s| &*s == wl_surface)
+                                .unwrap_or(false)
+                        })
+                        .cloned();
+                    w.and_then(|w| self.twm.space.outputs_for_element(&w).first().cloned())
+                });
+
+            if let Some(output) = output {
+                let geometry = self.twm.space.output_geometry(&output).unwrap();
+
+                surface.with_pending_state(|state| {
+                    state.states.set(xdg_toplevel::State::Fullscreen);
+                    state.size = Some(geometry.size);
+                });
+
+                let window = self
+                    .twm
+                    .space
+                    .elements()
+                    .find(|w| w.toplevel().unwrap().wl_surface() == wl_surface)
+                    .unwrap()
+                    .clone();
+                self.twm.space.map_element(window, geometry.loc, true);
+            }
+        }
+
+        // The protocol demands us to always reply with a configure,
+        // regardless of we fulfilled the request or not
+        surface.send_configure();
+    }
+
+    fn unfullscreen_request(&mut self, surface: ToplevelSurface) {
+        if !surface
+            .current_state()
+            .states
+            .contains(xdg_toplevel::State::Fullscreen)
+        {
+            return;
+        }
+
+        surface.with_pending_state(|state| {
+            state.states.unset(xdg_toplevel::State::Fullscreen);
+            state.size = None;
+        });
+
+        surface.send_pending_configure();
     }
 
     fn maximize_request(&mut self, surface: ToplevelSurface) {

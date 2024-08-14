@@ -6,8 +6,10 @@ use smithay::backend::input::{
 };
 use smithay::input::keyboard::{FilterResult, Keysym};
 use smithay::input::pointer::{AxisFrame, ButtonEvent, MotionEvent, RelativeMotionEvent};
+use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::utils::SERIAL_COUNTER;
+use smithay::wayland::shell::xdg::XdgShellHandler;
 
 use crate::state::State;
 
@@ -15,6 +17,7 @@ enum KeyAction {
     Quit,
     CloseWindow,
     Terminal,
+    ToggleFullscreen,
     ChangeVt(i32),
 }
 
@@ -46,12 +49,13 @@ impl State {
                                 FilterResult::Intercept(KeyAction::Quit)
                             } else if sym == Keysym::C {
                                 FilterResult::Intercept(KeyAction::CloseWindow)
+                            } else if sym == Keysym::F {
+                                FilterResult::Intercept(KeyAction::ToggleFullscreen)
                             } else if sym == Keysym::T {
                                 FilterResult::Intercept(KeyAction::Terminal)
                             } else if sym >= Keysym::XF86_Switch_VT_1
                                 || sym <= Keysym::XF86_Switch_VT_12
                             {
-                                // let vt = (sym.raw() - Keysym::XF86_Switch_VT_1.raw() + 1) as i32;
                                 let vt = sym.raw().wrapping_sub(Keysym::XF86_Switch_VT_1.raw())
                                     as i32
                                     + 1;
@@ -89,6 +93,32 @@ impl State {
                     }
                     Some(KeyAction::Terminal) => {
                         std::process::Command::new("foot").spawn().ok();
+                    }
+                    Some(KeyAction::ToggleFullscreen) => {
+                        if let Some(focus) = self.twm.seat.get_keyboard().unwrap().current_focus() {
+                            // FIXME: is there a better way of doing this?
+                            let window = self.twm.space.elements().find(|window| {
+                                let found = Cell::new(false);
+                                window.with_surfaces(|surface, _| {
+                                    if surface == &focus {
+                                        found.set(true);
+                                    }
+                                });
+                                found.get()
+                            });
+                            if let Some(window) = window {
+                                let toplevel = window.toplevel().unwrap().clone();
+                                if toplevel
+                                    .current_state()
+                                    .states
+                                    .contains(xdg_toplevel::State::Fullscreen)
+                                {
+                                    self.unfullscreen_request(toplevel);
+                                } else {
+                                    self.fullscreen_request(toplevel, None);
+                                }
+                            }
+                        }
                     }
                     Some(KeyAction::ChangeVt(vt)) => {
                         (*change_vt)(vt);

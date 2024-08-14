@@ -42,7 +42,13 @@ fn main() {
         .run(None, &mut data, move |data| {
             let _span = tracy_client::span!("loop callback");
 
-            data.state.twm.display_handle.flush_clients().unwrap();
+            data.state.twm.space.refresh();
+            data.state.twm.popups.cleanup();
+
+            {
+                let _span = tracy_client::span!("flush_clients");
+                data.state.twm.display_handle.flush_clients().unwrap();
+            }
         })
         .unwrap();
 }

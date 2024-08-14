@@ -270,8 +270,6 @@ impl Twm {
                 |_, _| Some(output.clone()),
             )
         });
-
-        self.space.refresh();
     }
 }
 
