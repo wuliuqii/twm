@@ -20,10 +20,13 @@ git = "https://github.com/Smithay/smithay.git"
 default-features = false
 features = [
   "backend_drm",
+  "backend_egl",
   "backend_gbm",
   "backend_session_libseat",
   "backend_winit",
   "desktop",
+  "renderer_gl",
+  "use_system_lib",
   "wayland_frontend",
 ]
 
