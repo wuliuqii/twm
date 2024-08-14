@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use smithay::backend::renderer::element::solid::{SolidColorBuffer, SolidColorRenderElement};
 use smithay::backend::renderer::element::Kind;
-use smithay::backend::renderer::utils::CommitCounter;
 use smithay::backend::renderer::ImportAll;
 use smithay::desktop::space::{space_render_elements, SpaceRenderElements};
 use smithay::desktop::{PopupManager, Space, Window, WindowSurfaceType};
@@ -12,6 +11,7 @@ use smithay::input::{Seat, SeatState};
 use smithay::output::Output;
 use smithay::reexports::calloop::generic::Generic;
 use smithay::reexports::calloop::{Interest, LoopHandle, LoopSignal, Mode, PostAction};
+use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel::WmCapabilities;
 use smithay::reexports::wayland_server::backend::{ClientData, ClientId, DisconnectReason};
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::reexports::wayland_server::{Display, DisplayHandle};
@@ -96,7 +96,14 @@ impl Twm {
         let display_handle = display.handle();
 
         let compositor_state = CompositorState::new::<State>(&display_handle);
-        let xdg_shell_state = XdgShellState::new::<State>(&display_handle);
+        let xdg_shell_state = XdgShellState::new_with_capabilities::<State>(
+            &display_handle,
+            [
+                WmCapabilities::Fullscreen,
+                WmCapabilities::Maximize,
+                WmCapabilities::WindowMenu,
+            ],
+        );
         let shm_state = ShmState::new::<State>(&display_handle, vec![]);
         let output_manager_state =
             OutputManagerState::new_with_xdg_output::<State>(&display_handle);
