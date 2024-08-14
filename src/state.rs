@@ -2,7 +2,7 @@ use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 
-use smithay::backend::renderer::element::solid::SolidColorRenderElement;
+use smithay::backend::renderer::element::solid::{SolidColorBuffer, SolidColorRenderElement};
 use smithay::backend::renderer::element::Kind;
 use smithay::backend::renderer::utils::CommitCounter;
 use smithay::backend::renderer::ImportAll;
@@ -11,7 +11,6 @@ use smithay::desktop::{PopupManager, Space, Window, WindowSurfaceType};
 use smithay::input::{Seat, SeatState};
 use smithay::output::Output;
 use smithay::reexports::calloop::generic::Generic;
-use smithay::reexports::calloop::timer::{TimeoutAction, Timer};
 use smithay::reexports::calloop::{Interest, LoopHandle, LoopSignal, Mode, PostAction};
 use smithay::reexports::wayland_server::backend::{ClientData, ClientId, DisconnectReason};
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
@@ -49,6 +48,8 @@ pub struct Twm {
 
     pub seat: Seat<State>,
     pub output: Option<Output>,
+
+    pub pointer_buffer: SolidColorBuffer,
 
     // Set to `true` if there's a redraw queued on the event loop. Reset to `false` in redraw()
     // which means that you cannot queue more than one redraw at once.
@@ -164,6 +165,8 @@ impl Twm {
             )
             .unwrap();
 
+        let pointer_buffer = SolidColorBuffer::new((16, 16), [1., 0.8, 0., 1.]);
+
         Self {
             start_time,
             stop_signal,
@@ -182,6 +185,8 @@ impl Twm {
 
             seat,
             output: None,
+
+            pointer_buffer,
 
             redraw_queued: false,
             waiting_for_vblank: false,
@@ -234,19 +239,15 @@ impl Twm {
             .collect();
         elements.insert(
             0,
-            OutputRenderElements::Pointer(SolidColorRenderElement::new(
-                smithay::backend::renderer::element::Id::new(),
-                smithay::utils::Rectangle {
-                    loc: self
-                        .seat
-                        .get_pointer()
-                        .unwrap()
-                        .current_location()
-                        .to_physical_precise_round(1.),
-                    size: (16, 16).into(),
-                },
-                CommitCounter::default(),
-                [1., 0.5, 0., 1.],
+            OutputRenderElements::Pointer(SolidColorRenderElement::from_buffer(
+                &self.pointer_buffer,
+                self.seat
+                    .get_pointer()
+                    .unwrap()
+                    .current_location()
+                    .to_physical_precise_round(1.),
+                1.,
+                1.,
                 Kind::Unspecified,
             )),
         );
