@@ -165,6 +165,14 @@ impl XdgShellHandler for State {
         });
         surface.send_pending_configure();
     }
+
+    fn toplevel_destroyed(&mut self, _surface: ToplevelSurface) {
+        self.twm.queue_redraw();
+    }
+
+    fn popup_destroyed(&mut self, _surface: PopupSurface) {
+        self.twm.queue_redraw();
+    }
 }
 
 // Xdg Shell
