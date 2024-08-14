@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use smithay::backend::input::{
     AbsolutePositionEvent, Axis, AxisSource, ButtonState, Event, InputBackend, InputEvent,
     KeyState, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent, PointerMotionEvent,
@@ -11,6 +13,7 @@ use crate::state::State;
 
 enum KeyAction {
     Quit,
+    CloseWindow,
     Terminal,
     ChangeVt(i32),
 }
@@ -41,6 +44,8 @@ impl State {
                             let sym = keysym.modified_sym();
                             if sym == Keysym::Q {
                                 FilterResult::Intercept(KeyAction::Quit)
+                            } else if sym == Keysym::C {
+                                FilterResult::Intercept(KeyAction::CloseWindow)
                             } else if sym == Keysym::T {
                                 FilterResult::Intercept(KeyAction::Terminal)
                             } else if sym >= Keysym::XF86_Switch_VT_1
@@ -63,8 +68,24 @@ impl State {
 
                 match action {
                     Some(KeyAction::Quit) => {
-                        info!("quitting because Q was pressed");
+                        info!("quitting");
                         self.twm.stop_signal.stop();
+                    }
+                    Some(KeyAction::CloseWindow) => {
+                        if let Some(focus) = self.twm.seat.get_keyboard().unwrap().current_focus() {
+                            for window in self.twm.space.elements() {
+                                let found = Cell::new(false);
+                                window.with_surfaces(|surface, _| {
+                                    if surface == &focus {
+                                        found.set(true);
+                                    }
+                                });
+                                if found.get() {
+                                    window.toplevel().unwrap().send_close();
+                                    break;
+                                }
+                            }
+                        }
                     }
                     Some(KeyAction::Terminal) => {
                         std::process::Command::new("foot").spawn().ok();
