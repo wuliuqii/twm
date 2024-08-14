@@ -21,6 +21,7 @@ impl State {
         change_vt: &mut dyn FnMut(i32),
         event: InputEvent<I>,
     ) {
+        let _span = tracy_client::span!("process_input_event");
         trace!("process_input_event");
 
         match event {

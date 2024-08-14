@@ -4,7 +4,6 @@ use smithay::backend::renderer::damage::OutputDamageTracker;
 use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
 use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::backend::winit::{self, WinitEvent, WinitGraphicsBackend};
-use smithay::desktop::space::SpaceRenderElements;
 use smithay::output::{Mode, Output, PhysicalProperties, Subpixel};
 use smithay::reexports::calloop::timer::{TimeoutAction, Timer};
 use smithay::reexports::calloop::LoopHandle;
@@ -36,6 +35,8 @@ impl Winit {
             WaylandSurfaceRenderElement<GlesRenderer>,
         >],
     ) {
+        let _span = tracy_client::span!("Winit::render");
+
         let size = self.backend.window_size();
         let damage = Rectangle::from_loc_and_size((0, 0), size);
         self.backend.bind().unwrap();

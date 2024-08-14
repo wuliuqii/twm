@@ -26,3 +26,6 @@ features = [
   "desktop",
   "wayland_frontend",
 ]
+
+[features]
+profile-with-tracy = ["profiling/profile-with-tracy", "tracy-client/default"]
