@@ -42,6 +42,8 @@ impl CompositorHandler for State {
 
         xdg_shell::handle_commit(&mut self.twm.popups, &self.twm.space, surface);
         resize_grab::handle_commit(&mut self.twm.space, surface);
+
+        self.twm.queue_redraw()
     }
 }
 

@@ -96,12 +96,12 @@ impl Winit {
                             );
                     }
                     WinitEvent::Input(event) => data.state.process_input_event(&mut |_| (), event),
+                    WinitEvent::Redraw => data.state.twm.queue_redraw(),
                     WinitEvent::CloseRequested => {
                         data.state.twm.stop_signal.stop();
                     }
-                    _ => {}
+                    WinitEvent::Focus(_) => (),
                 });
-                data.state.twm.redraw(&mut data.state.backend);
                 TimeoutAction::ToDuration(Duration::from_millis(16))
             })
             .unwrap();

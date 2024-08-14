@@ -108,6 +108,8 @@ impl State {
                         utime: event.time(),
                     },
                 );
+
+                self.twm.queue_redraw();
             }
             InputEvent::PointerMotionAbsolute { event, .. } => {
                 let output = self.twm.space.outputs().next().unwrap();
@@ -132,6 +134,8 @@ impl State {
                     },
                 );
                 pointer.frame(self);
+
+                self.twm.queue_redraw();
             }
             InputEvent::PointerButton { event, .. } => {
                 let pointer = self.twm.seat.get_pointer().unwrap();
