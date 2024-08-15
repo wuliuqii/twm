@@ -14,11 +14,13 @@ use smithay::reexports::calloop::{LoopHandle, RegistrationToken};
 use crate::state::OutputRenderElements;
 use crate::LoopData;
 
+#[allow(dead_code)]
 const SUPPORTED_COLOR_FORMATS: &[Fourcc] = &[Fourcc::Argb8888, Fourcc::Abgr8888];
 
 type GbmDrmCompositor =
     DrmCompositor<GbmAllocator<DrmDeviceFd>, GbmDevice<DrmDeviceFd>, (), DrmDeviceFd>;
 
+#[allow(dead_code)]
 struct OutputDevice {
     id: dev_t,
     path: PathBuf,
@@ -28,6 +30,7 @@ struct OutputDevice {
     drm_compositor: GbmDrmCompositor,
 }
 
+#[allow(dead_code)]
 pub struct Tty {
     session: LibSeatSession,
     primary_gpu_path: PathBuf,
@@ -45,8 +48,8 @@ impl Tty {
 
     pub fn render(
         &mut self,
-        twm: &mut crate::Twm,
-        elements: &[OutputRenderElements<
+        _twm: &mut crate::Twm,
+        _elements: &[OutputRenderElements<
             GlesRenderer,
             WaylandSurfaceRenderElement<GlesRenderer>,
         >],
@@ -56,11 +59,11 @@ impl Tty {
 }
 
 impl Tty {
-    pub fn new(event_loop: LoopHandle<LoopData>) -> Self {
+    pub fn new(_event_loop: LoopHandle<LoopData>) -> Self {
         todo!()
     }
 
-    pub fn init(&self, twm: &mut crate::Twm) {
+    pub fn init(&self, _twm: &mut crate::Twm) {
         todo!()
     }
 }

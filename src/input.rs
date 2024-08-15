@@ -18,15 +18,10 @@ enum KeyAction {
     CloseWindow,
     Terminal,
     ToggleFullscreen,
-    ChangeVt(i32),
 }
 
 impl State {
-    pub fn process_input_event<I: InputBackend>(
-        &mut self,
-        change_vt: &mut dyn FnMut(i32),
-        event: InputEvent<I>,
-    ) {
+    pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
         let _span = tracy_client::span!("process_input_event");
         trace!("process_input_event");
 
@@ -53,14 +48,6 @@ impl State {
                                 FilterResult::Intercept(KeyAction::ToggleFullscreen)
                             } else if sym == Keysym::T {
                                 FilterResult::Intercept(KeyAction::Terminal)
-                            } else if sym >= Keysym::XF86_Switch_VT_1
-                                || sym <= Keysym::XF86_Switch_VT_12
-                            {
-                                let vt = sym.raw().wrapping_sub(Keysym::XF86_Switch_VT_1.raw())
-                                    as i32
-                                    + 1;
-
-                                FilterResult::Intercept(KeyAction::ChangeVt(vt))
                             } else {
                                 FilterResult::Forward
                             }
@@ -119,9 +106,6 @@ impl State {
                                 }
                             }
                         }
-                    }
-                    Some(KeyAction::ChangeVt(vt)) => {
-                        (*change_vt)(vt);
                     }
                     None => {}
                 }

@@ -30,7 +30,7 @@ impl Winit {
 
     pub fn render(
         &mut self,
-        twm: &mut Twm,
+        _twm: &mut Twm,
         elements: &[OutputRenderElements<
             GlesRenderer,
             WaylandSurfaceRenderElement<GlesRenderer>,
@@ -97,7 +97,7 @@ impl Winit {
                                 None,
                             );
                     }
-                    WinitEvent::Input(event) => data.state.process_input_event(&mut |_| (), event),
+                    WinitEvent::Input(event) => data.state.process_input_event(event),
                     WinitEvent::Redraw => data.state.twm.queue_redraw(),
                     WinitEvent::CloseRequested => {
                         data.state.twm.stop_signal.stop();

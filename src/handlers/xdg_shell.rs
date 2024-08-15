@@ -28,6 +28,8 @@ impl XdgShellHandler for State {
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         let window = Window::new_wayland_window(surface);
         self.twm.space.map_element(window, (0, 0), false);
+
+        self.twm.refresh_geometry();
     }
 
     fn new_popup(&mut self, surface: PopupSurface, _positioner: PositionerState) {
